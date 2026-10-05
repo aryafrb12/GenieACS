@@ -1,0 +1,48 @@
+x-genieacs: &genieacs
+  build: .
+  image: genieacs:1.2.13
+  restart: unless-stopped
+  depends_on:
+    - mongo
+  env_file: .env
+  environment:
+    GENIEACS_MONGODB_CONNECTION_URL: mongodb://mongo:27017/genieacs
+  volumes:
+    - ./ext:/opt/genieacs/ext
+
+services:
+  mongo:
+    image: mongo:4.4
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro   # restore.sh (sekali jalan)
+      - ./db:/dump:ro                                  # file .bson dari beryindo
+    # Mongo sengaja tidak di-expose ke host
+
+  genieacs-cwmp:
+    <<: *genieacs
+    command: genieacs-cwmp
+    ports:
+      - "7547:7547"   # ACS URL untuk ONU/CPE (TR-069)
+
+  genieacs-nbi:
+    <<: *genieacs
+    command: genieacs-nbi
+    ports:
+      - "7557:7557"   # REST API
+
+  genieacs-fs:
+    <<: *genieacs
+    command: genieacs-fs
+    ports:
+      - "7567:7567"   # File server (firmware)
+
+  genieacs-ui:
+    <<: *genieacs
+    command: genieacs-ui
+    ports:
+      - "3000:3000"   # Web UI
+
+volumes:
+  mongo-data:
